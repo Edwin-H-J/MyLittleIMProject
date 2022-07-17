@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -37,6 +38,10 @@ func (this *User) listenSend() {
 	}
 }
 
+func (this *User) SendMsg(msg string) {
+	this.Conn.Write([]byte(msg))
+}
+
 func (this *User) Online() {
 	this.server.mapLock.Lock()
 	this.server.OnlineMap[this.Name] = this
@@ -53,5 +58,27 @@ func (this *User) Offline() {
 	this.server.Broadcast(this, "下线")
 }
 func (this *User) DoMessage(msg string) {
-	this.server.Broadcast(this, msg)
+	if msg == "who" {
+		this.server.mapLock.Lock()
+		for _, user := range this.server.OnlineMap {
+			onlineMsg := "[" + user.Address + "]" + user.Name + ": " + "在线\n"
+			this.SendMsg(onlineMsg)
+		}
+		this.server.mapLock.Unlock()
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
+		newName := strings.Split(msg, "|")[1]
+		this.server.mapLock.Lock()
+		if _, ok := this.server.OnlineMap[newName]; !ok {
+			delete(this.server.OnlineMap, this.Name)
+			this.Name = newName
+			this.server.OnlineMap[newName] = this
+			this.SendMsg("您已经更新用户名:" + this.Name + "\n")
+		} else {
+			this.SendMsg("用户名已被占用" + "\n")
+		}
+		this.server.mapLock.Unlock()
+	} else {
+		this.server.Broadcast(this, msg)
+	}
+
 }
