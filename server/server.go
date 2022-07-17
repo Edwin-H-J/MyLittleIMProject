@@ -27,19 +27,15 @@ func BuildServer(Address string, port int) *Server {
 }
 
 func (this *Server) handle(conn net.Conn) {
-	user := NewUser(conn)
-	this.mapLock.Lock()
-	this.OnlineMap[user.Name] = user
-	this.mapLock.Unlock()
-
-	this.Broadcast(user, "上线")
+	user := NewUser(conn, this)
+	user.Online()
 
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				this.Broadcast(user, "下线")
+				user.Offline()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -47,7 +43,7 @@ func (this *Server) handle(conn net.Conn) {
 				return
 			}
 			msg := string(buf[0 : n-1])
-			this.Broadcast(user, msg)
+			user.DoMessage(msg)
 		}
 	}()
 	select {}
