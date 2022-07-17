@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -32,6 +33,23 @@ func (this *Server) handle(conn net.Conn) {
 	this.mapLock.Unlock()
 
 	this.Broadcast(user, "上线")
+
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				this.Broadcast(user, "下线")
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read err", err)
+				return
+			}
+			msg := string(buf[0 : n-1])
+			this.Broadcast(user, msg)
+		}
+	}()
 	select {}
 }
 
