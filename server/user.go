@@ -77,6 +77,17 @@ func (this *User) DoMessage(msg string) {
 			this.SendMsg("用户名已被占用" + "\n")
 		}
 		this.server.mapLock.Unlock()
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		remoteName := strings.Split(msg, "|")[1]
+		msg := "[" + this.Address + "]" + this.Name + ": " + strings.Split(msg, "|")[2] + " (私聊) \n"
+		this.server.mapLock.Lock()
+		if remoteUser, ok := this.server.OnlineMap[remoteName]; ok {
+			remoteUser.SendMsg(msg)
+		} else {
+			this.SendMsg("该用户不存在")
+		}
+		this.server.mapLock.Unlock()
+
 	} else {
 		this.server.Broadcast(this, msg)
 	}
